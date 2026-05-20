@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RICHATEX - Panel Dual con Firmas</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1b365d;
+            --primary-light: #2c5282;
+            --accent: #d69e2e;
+            --success: #2f855a;
+            --danger: #e53e3e;
+            --warning: #dd6b20;
+            --bg: #f7fafc;
+            --card-bg: #ffffff;
+            --text: #2d3748;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg); color: var(--text);
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--primary); color: white;
+            padding: 15px 30px; display: flex;
+            justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        header h1 { margin: 0; font-size: 1.8rem; letter-spacing: 2px; font-weight: 800; }
+
+        .badge-online {
+            background-color: #48bb78; color: white; padding: 5px 12px;
+            border-radius: 20px; font-size: 0.85rem; font-weight: bold;
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        .badge-online::before {
+            content: ''; width: 8px; height: 8px; background-color: white; border-radius: 50%; display: inline-block;
+        }
+
+        .dashboard {
+            max-width: 1400px; width: 100%; margin: 25px auto; padding: 0 20px;
+            box-sizing: border-box; display: grid;
+            grid-template-columns: 1fr 1.3fr; gap: 25px;
+        }
+
+        @media (max-width: 950px) { .dashboard { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border);
+            padding: 22px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            display: flex; flex-direction: column;
+        }
+
+        .card-title {
+            margin-top: 0; margin-bottom: 18px; font-size: 1.15rem; color: var(--primary);
+            border-bottom: 2px solid var(--border); padding-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .form-group { display: flex; flex-direction: column; margin-bottom: 12px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        label {
+            font-size: 0.8rem; font-weight: 700; margin-bottom: 5px; color: #4a5568;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        input, select {
+            padding: 10px 12px; border: 2px solid var(--border); border-radius: 8px;
+            font-size: 0.95rem; transition: all 0.2s ease; outline: none; background: white;
+        }
+
+        input:focus, select:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15); }
+        input:disabled, select:disabled { background-color: #edf2f7; cursor: not-allowed; }
+
+        .unit-selector {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;
+        }
+        .unit-option {
+            border: 2px solid var(--border); border-radius: 8px; padding: 10px;
+            text-align: center; cursor: pointer; font-weight: bold; font-size: 0.9rem;
+            transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .unit-option.active {
+            border-color: var(--primary-light); background-color: #ebf8ff; color: var(--primary-light);
+        }
+
+        .btn {
+            padding: 11px 18px; border: none; border-radius: 8px; font-weight: bold;
+            cursor: pointer; transition: all 0.2s ease; display: inline-flex;
+            justify-content: center; align-items: center; gap: 8px; font-size: 0.95rem;
+        }
+
+        .btn-add { background-color: var(--primary-light); color: white; }
+        .btn-add:hover { background-color: var(--primary); }
+
+        .btn-close-item { background-color: var(--accent); color: white; width: 100%; margin-top: 10px; }
+        .btn-close-item:hover { background-color: #b7791f; }
+
+        .btn-undo { background-color: var(--warning); color: white; }
+        .btn-undo:hover { background-color: #c05621; }
+
+        .btn-clear { background-color: var(--danger); color: white; }
+        .btn-clear:hover { background-color: #c53030; }
+
+        .btn-submit {
+            background-color: var(--success); color: white; width: 100%;
+            padding: 15px; font-size: 1.15rem; margin-top: auto;
+            box-shadow: 0 4px 6px rgba(47, 133, 90, 0.2);
+        }
+        .btn-submit:hover { background-color: #22543d; transform: translateY(-1px); }
+
+        /* Monitor Derecho */
+        .monitor-container { display: flex; flex-direction: column; gap: 15px; max-height: 400px; overflow-y: auto; }
+
+        .art-block {
+            background: #f7fafc; border: 1px solid var(--border);
+            border-left: 5px solid var(--primary); border-radius: 4px; padding: 12px;
+        }
+        .art-block.pending { border-left-color: var(--accent); background: #fffaf0; }
+
+        .art-block-header {
+            display: flex; justify-content: space-between; font-weight: bold;
+            border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 8px; font-size: 0.9rem;
+        }
+
+        .chips-container { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .chip {
+            background: white; border: 1px solid var(--border); padding: 3px 8px;
+            border-radius: 12px; font-size: 0.8rem; font-family: monospace;
+        }
+
+        .totals-summary-row {
+            display: flex; justify-content: space-between; font-size: 0.82rem;
+            background: #edf2f7; padding: 6px 10px; border-radius: 4px; color: #2d3748;
+        }
+
+        .grand-total-box {
+            background-color: #edf2f7; border: 2px dashed var(--primary); border-radius: 8px;
+            padding: 12px; margin-top: 15px; display: grid; grid-template-columns: 1.2fr 1fr; align-items: center;
+        }
+
+        .physical-split { font-size: 0.8rem; color: #4a5568; line-height: 1.4; border-right: 1px dashed #cbd5e0; padding-right: 10px; }
+
+        .empty-state { color: #718096; text-align: center; padding: 50px 20px; font-style: italic; }
+
+        /* Modal */
+        .modal {
+            display: none; position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(26, 32, 44, 0.6); backdrop-filter: blur(4px);
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 360px; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>RICHATEX</h1>
+    <div class="badge-online">Módulo de Carga Finalizado</div>
+</header>
+
+<div class="dashboard">
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-user"></i> 1. Cliente</div>
+            <div class="form-group">
+                <label for="cliente">Razón Social</label>
+                <input type="text" id="cliente" placeholder="Nombre de la empresa">
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><i class="fa-solid fa-boxes-stacked"></i> 2. Artículo Activo</div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label for="articulo">Artículo / Calidad</label>
+                    <input type="text" id="articulo" placeholder="Ej. Denim Stretch">
+                </div>
+                <div class="form-group">
+                    <label for="color">Color</label>
+                    <input type="text" id="color" placeholder="Ej. Indigo Oscuro">
+                </div>
+            </div>
+
+            <label>Unidad de Venta para este Artículo</label>
+            <div class="unit-selector">
+                <div class="unit-option active" id="opt-kg" onclick="setUnidad('KG')">
+                    <i class="fa-solid fa-weight-scale"></i> En Kilos (KG)
+                </div>
+                <div class="unit-option" id="opt-mts" onclick="setUnidad('MTS')">
+                    <i class="fa-solid fa-ruler"></i> En Metros (MTS)
+                </div>
+            </div>
+            
+            <div class="grid-2" style="margin-top: 5px; align-items: flex-end;">
+                <div class="form-group" style="margin: 0;">
+                    <label for="cantidad" id="lbl-cantidad">Medida del Bulto (KG)</label>
+                    <input type="number" id="cantidad" step="0.01" placeholder="0.00">
+                </div>
+                <button class="btn btn-add" id="btn-agregar">
+                    <i class="fa-solid fa-plus"></i> Añadir Medida
+                </button>
+            </div>
+
+            <div class="grid-2" style="margin-top: 12px;">
+                <button class="btn btn-undo" id="btn-deshacer" title="Borrar última medida">
+                    <i class="fa-solid fa-rotate-left"></i> Deshacer
+                </button>
+                <button class="btn btn-clear" id="btn-borrar-todo">
+                    <i class="fa-solid fa-trash-can"></i> Limpiar Todo
+                </button>
+            </div>
+            
+            <hr style="width:100%; border:none; border-top:1px solid var(--border); margin:15px 0;">
+            
+            <button class="btn btn-close-item" id="btn-cerrar-articulo">
+                <i class="fa-solid fa-dollar-sign"></i> Cerrar Lote y Asignar Precio
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">
+            <span><i class="fa-solid fa-desktop"></i> Resumen de Despacho Consolidado</span>
+            <span id="contador-global" style="font-size: 0.85rem; background: var(--primary); color: white; padding: 2px 10px; border-radius: 10px;">0 Bultos</span>
+        </div>
+        
+        <div class="monitor-container" id="monitor">
+            <div class="empty-state">No hay registros consolidados en esta sesión.</div>
+        </div>
+
+        <div class="grand-total-box">
+            <div class="physical-split">
+                <strong style="color:var(--primary); font-size:0.75rem; text-transform: uppercase;">Acumulado Físico:</strong><br>
+                <i class="fa-solid fa-weight-scale" style="width:14px;"></i> Total Kilos: <strong id="global-kg">0.00 KG</strong><br>
+                <i class="fa-solid fa-ruler" style="width:14px;"></i> Total Metros: <strong id="global-mts">0.00 MTS</strong>
+            </div>
+            <div style="text-align: right; padding-left: 10px;">
+                <span style="font-weight: bold; color: var(--primary); text-transform: uppercase; font-size: 0.75rem; display: block;">Total General a Pagar</span>
+                <span id="monto-total-cliente" style="font-size: 1.5rem; font-weight: 800; color: var(--success);">$ 0.00</span>
+            </div>
+        </div>
+
+        <button class="btn btn-submit" id="btn-finalizar">
+            <i class="fa-solid fa-file-pdf"></i> GENERAR PARKING LIST (PDF)
+        </button>
+    </div>
+</div>
+
+<div class="modal" id="modal-precio">
+    <div class="modal-content">
+        <h3 id="modal-art-titulo" style="margin-top:0; color:var(--primary); font-size:1.15rem;">Precio del Artículo</h3>
+        <p style="color: #4a5568; font-size: 0.85rem; margin-bottom: 15px;" id="modal-art-subtext">Establece el precio unitario:</p>
+        <div class="form-group" style="margin-bottom: 15px;">
+            <input type="number" id="precio-articulo" step="0.01" placeholder="$ 0.00" style="text-align: center; font-size: 1.2rem; font-weight: bold; border-color: var(--accent);">
+        </div>
+        <button class="btn btn-submit" id="btn-guardar-precio" style="margin: 0; background: var(--primary); padding: 10px; font-size:1rem;">
+            <i class="fa-solid fa-check"></i> Confirmar y Archivar
+        </button>
+    </div>
+</div>
+
+<script>
+    let lotesConsolidados = []; 
+    let loteActualMedidas = []; 
+    let unidadActual = 'KG'; 
+    
+    const { jsPDF } = window.jspdf;
+
+    const inputCliente = document.getElementById('cliente');
+    const inputArticulo = document.getElementById('articulo');
+    const inputColor = document.getElementById('color');
+    const inputCantidad = document.getElementById('cantidad');
+    const lblCantidad = document.getElementById('lbl-cantidad');
+    const btnAgregar = document.getElementById('btn-agregar');
+    const btnDeshacer = document.getElementById('btn-deshacer');
+    const btnBorrarTodo = document.getElementById('btn-borrar-todo');
+    const btnCerrarArticulo = document.getElementById('btn-cerrar-articulo');
+    const monitor = document.getElementById('monitor');
+    const contadorGlobal = document.getElementById('contador-global');
+    
+    const globalKg = document.getElementById('global-kg');
+    const globalMts = document.getElementById('global-mts');
+    const montoTotalCliente = document.getElementById('monto-total-cliente');
+    const btnFinalizar = document.getElementById('btn-finalizar');
+    
+    const modalPrecio = document.getElementById('modal-precio');
+    const modalArtTitulo = document.getElementById('modal-art-titulo');
+    const modalArtSubtext = document.getElementById('modal-art-subtext');
+    const inputPrecioArticulo = document.getElementById('precio-articulo');
+    const btnGuardarPrecio = document.getElementById('btn-guardar-precio');
+
+    inputCantidad.addEventListener('keypress', (e) => { if (e.key === 'Enter') agregarMedida(); });
+    btnAgregar.addEventListener('click', agregarMedida);
+    btnDeshacer.addEventListener('click', deshacerMedida);
+    btnBorrarTodo.addEventListener('click', limpiarTodo);
+    btnCerrarArticulo.addEventListener('click', abrirModalPrecio);
+    btnGuardarPrecio.addEventListener('click', consolidarLoteActual);
+
+    function setUnidad(unidad) {
+        if(loteActualMedidas.length > 0) return; 
+        unidadActual = unidad;
+        document.getElementById('opt-kg').classList.toggle('active', unidad === 'KG');
+        document.getElementById('opt-mts').classList.toggle('active', unidad === 'MTS');
+        lblCantidad.innerText = `Medida del Bulto (${unidad})`;
+    }
+
+    function toggleSelectoresUnidad(disabled) {
+        const opciones = document.querySelectorAll('.unit-option');
+        opciones.forEach(opt => {
+            opt.style.pointerEvents = disabled ? 'none' : 'auto';
+            opt.style.opacity = disabled ? '0.7' : '1';
+        });
+    }
+
+    function agregarMedida() {
+        const cliente = inputCliente.value.trim();
+        const articulo = inputArticulo.value.trim();
+        const color = inputColor.value.trim();
+        const cantidad = parseFloat(inputCantidad.value);
+
+        if (!cliente) { alert("Primero debes registrar el nombre del Cliente."); return; }
+        if (!articulo || !color) { alert("Ingresa el Artículo y su respectivo Color."); return; }
+        if (isNaN(cantidad) || cantidad <= 0) { alert("Ingresa una cantidad válida."); return; }
+
+        inputCliente.disabled = true;
+        inputArticulo.disabled = true;
+        inputColor.disabled = true;
+        toggleSelectoresUnidad(true); 
+
+        loteActualMedidas.push(cantidad);
+        inputCantidad.value = '';
+        inputCantidad.focus();
+
+        renderDashboard();
+    }
+
+    function deshacerMedida() {
+        if (loteActualMedidas.length === 0) { alert("No hay medidas pendientes en el lote actual."); return; }
+        loteActualMedidas.pop();
+        if (loteActualMedidas.length === 0) {
+            inputArticulo.disabled = false; inputColor.disabled = false;
+            toggleSelectoresUnidad(false);
+            if (lotesConsolidados.length === 0) inputCliente.disabled = false;
+        }
+        renderDashboard();
+    }
+
+    function abrirModalPrecio() {
+        if (loteActualMedidas.length === 0) { alert("Debes ingresar al menos una medida antes de cerrar el artículo."); return; }
+        modalArtTitulo.innerText = `${inputArticulo.value.toUpperCase()} (${inputColor.value.toUpperCase()})`;
+        modalArtSubtext.innerText = `Establece el precio pactado por cada ${unidadActual === 'KG' ? 'Kilo (KG)' : 'Metro (MTS)'}:`;
+        inputPrecioArticulo.value = '';
+        modalPrecio.style.display = 'flex';
+        inputPrecioArticulo.focus();
+    }
+
+    function consolidarLoteActual() {
+        const precio = parseFloat(inputPrecioArticulo.value);
+        if (isNaN(precio) || precio < 0) { alert("Ingresa un precio válido."); return; }
+
+        const sumFisica = loteActualMedidas.reduce((a, b) => a + b, 0);
+        
+        lotesConsolidados.push({
+            articulo: inputArticulo.value.trim(),
+            color: inputColor.value.trim(),
+            unidad: unidadActual,
+            medidas: [...loteActualMedidas],
+            precio: precio,
+            totalFisico: sumFisica,
+            subtotal: sumFisica * precio
+        });
+
+        loteActualMedidas = [];
+        inputArticulo.disabled = false; inputColor.disabled = false;
+        toggleSelectoresUnidad(false);
+        inputArticulo.value = ''; inputColor.value = '';
+        
+        modalPrecio.style.display = 'none';
+        renderDashboard();
+        inputArticulo.focus();
+    }
+
+    function limpiarTodo() {
+        if (!confirm("¿Deseas reiniciar por completo el panel de control?")) return;
+        lotesConsolidados = []; loteActualMedidas = [];
+        setUnidad('KG');
+        inputCliente.disabled = false; inputArticulo.disabled = false; inputColor.disabled = false;
+        toggleSelectoresUnidad(false);
+        inputCliente.value = ''; inputArticulo.value = ''; inputColor.value = ''; inputCantidad.value = '';
+        renderDashboard();
+    }
+
+    function renderDashboard() {
+        let totalBultos = loteActualMedidas.length;
+        let totalDinero = 0;
+        let acumuladoKg = 0;
+        let acumuladoMts = 0;
+
+        monitor.innerHTML = '';
+
+        lotesConsolidados.forEach(lote => {
+            totalBultos += lote.medidas.length;
+            totalDinero += lote.subtotal;
+            
+            if(lote.unidad === 'KG') acumuladoKg += lote.totalFisico;
+            else acumuladoMts += lote.totalFisico;
+
+            const block = document.createElement('div');
+            block.className = 'art-block';
+            block.innerHTML = `
+                <div class="art-block-header">
+                    <span><i class="fa-solid fa-circle" style="color: ${lote.unidad === 'KG' ? '#2b6cb0' : '#b7791f'};"></i> ${lote.articulo.toUpperCase()} - ${lote.color.toUpperCase()}</span>
+                    <span style="color: var(--success);">Subtotal: $ ${lote.subtotal.toFixed(2)}</span>
+                </div>
+                <div class="chips-container">${lote.medidas.map(m => `<div class="chip">${m.toFixed(2)} <span style="font-size:0.65rem; color:#a0aec0;">${lote.unidad}</span></div>`).join('')}</div>
+                <div class="totals-summary-row">
+                    <span>Bultos: <strong>${lote.medidas.length} Rls.</strong></span>
+                    <span>Total Lote: <strong style="color:var(--primary);">${lote.totalFisico.toFixed(2)} ${lote.unidad}</strong></span>
+                    <span>Precio: <strong>$ ${lote.precio.toFixed(2)}</strong></span>
+                </div>
+            `;
+            monitor.appendChild(block);
+        });
+
+        if (loteActualMedidas.length > 0) {
+            const sumaPendiente = loteActualMedidas.reduce((a,b)=>a+b, 0);
+            if(unidadActual === 'KG') acumuladoKg += sumaPendiente;
+            else acumuladoMts += sumaPendiente;
+
+            const blockPendiente = document.createElement('div');
+            blockPendiente.className = 'art-block pending';
+            blockPendiente.innerHTML = `
+                <div class="art-block-header" style="border-bottom-color: var(--accent);">
+                    <span style="color: var(--warning);"><i class="fa-solid fa-spinner fa-spin"></i> ${inputArticulo.value.toUpperCase()} - ${inputColor.value.toUpperCase()}</span>
+                    <span style="color: var(--warning);">Suma Temp: ${sumaPendiente.toFixed(2)} ${unidadActual}</span>
+                </div>
+                <div class="chips-container">${loteActualMedidas.map(m => `<div class="chip" style="background:#fff;">${m.toFixed(2)} ${unidadActual}</div>`).join('')}</div>
+            `;
+            monitor.appendChild(blockPendiente);
+        }
+
+        if (lotesConsolidados.length === 0 && loteActualMedidas.length === 0) {
+            monitor.innerHTML = '<div class="empty-state">No hay registros consolidados en esta sesión.</div>';
+        }
+
+        contadorGlobal.innerText = `${totalBultos} Bultos`;
+        globalKg.innerText = `${acumuladoKg.toFixed(2)} KG`;
+        globalMts.innerText = `${acumuladoMts.toFixed(2)} MTS`;
+        montoTotalCliente.innerText = `$ ${totalDinero.toFixed(2)}`;
+    }
+
+    // --- CONSTRUCCIÓN DEL PDF CON SECCIÓN DE FIRMAS ---
+    btnFinalizar.addEventListener('click', () => {
+        if (lotesConsolidados.length === 0) { alert("No hay artículos cerrados para procesar."); return; }
+        if (loteActualMedidas.length > 0) { alert("Tienes un artículo abierto en carga. Ciérralo antes de imprimir."); return; }
+        generarPDF();
+    });
+
+    function generarPDF() {
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'letter' });
+        const marginX = 15;
+        let y = 20;
+
+        // Encabezado corporativo
+        doc.setFont("helvetica", "bold"); doc.setFontSize(23); doc.setTextColor(27, 54, 93);
+        doc.text("RICHATEX", marginX, y);
+        
+        doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(120);
+        doc.text("LOGÍSTICA - PARKING LIST DUAL CON FIRMAS", 125, y - 2);
+        doc.line(marginX, y + 3, 201, y + 3);
+
+        // Datos Informativos
+        y += 11;
+        doc.setFontSize(10); doc.setTextColor(50);
+        doc.setFont("helvetica", "bold"); doc.text("CLIENTE / DESTINATARIO:", marginX, y);
+        doc.setFont("helvetica", "normal"); doc.text(inputCliente.value.toUpperCase(), marginX + 48, y);
+
+        let totalBultosGlobal = lotesConsolidados.reduce((acc, current) => acc + current.medidas.length, 0);
+        doc.setFont("helvetica", "bold"); doc.text("TOTAL BULTOS COMPRA:", 135, y);
+        doc.setFont("helvetica", "normal"); doc.text(`${totalBultosGlobal} Unidades`, 181, y);
+
+        y += 10;
+
+        let granSumaDinero = 0;
+        let granSumaKg = 0;
+        let granSumaMts = 0;
+
+        lotesConsolidados.forEach((lote) => {
+            if (y > 225) { doc.addPage(); y = 20; }
+
+            granSumaDinero += lote.subtotal;
+            if(lote.unidad === 'KG') granSumaKg += lote.totalFisico;
+            else granSumaMts += lote.totalFisico;
+
+            // Header de bloque de producto
+            doc.setFillColor(240, 244, 248);
+            doc.rect(marginX, y, 186, 8, "F");
+            
+            doc.setFont("helvetica", "bold"); doc.setFontSize(9.5); doc.setTextColor(27, 54, 93);
+            doc.text(`ARTÍCULO: ${lote.articulo.toUpperCase()} | COLOR: ${lote.color.toUpperCase()} [CONTROLADO EN ${lote.unidad}]`, marginX + 3, y + 5.5);
+            
+            y += 8;
+
+            // Matriz de Celdas
+            const columnasMax = 6; const anchoCol = 31;
+            doc.setDrawColor(210);
+
+            let indiceFila = 0;
+            for (let i = 0; i < lote.medidas.length; i++) {
+                const colIndex = i % columnasMax;
+                const rowIndex = Math.floor(i / columnasMax);
+                
+                const posX = marginX + (colIndex * anchoCol);
+                const posY = y + (rowIndex * 7);
+
+                doc.rect(posX, posY, anchoCol, 7);
+                doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); doc.setTextColor(160);
+                doc.text(`${i+1}`, posX + 1.2, posY + 4.5);
+                
+                doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(40);
+                doc.text(`${lote.medidas[i].toFixed(2)} ${lote.unidad.toLowerCase()}`, posX + 6, posY + 5);
+
+                indiceFila = rowIndex;
+            }
+            
+            y += (indiceFila + 1) * 7;
+
+            // Fila de totalización parcial por artículo
+            doc.setFillColor(252, 252, 252);
+            doc.rect(marginX, y, 186, 6, "F");
+            doc.setDrawColor(180); doc.rect(marginX, y, 186, 6);
+            
+            doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(50);
+            doc.text(`Rollos: ${lote.medidas.length}`, marginX + 3, y + 4.2);
+            doc.text(`TOTAL PARCIAL: ${lote.totalFisico.toFixed(2)} ${lote.unidad}`, marginX + 60, y + 4.2);
+            doc.text(`Precio x ${lote.unidad}: $ ${lote.precio.toFixed(2)}`, marginX + 118, y + 4.2);
+            doc.text(`Subtotal: $ ${lote.subtotal.toFixed(2)}`, marginX + 158, y + 4.2);
+
+            y += 11; 
+        });
+
+        // RECUADRO RESUMEN DE TOTALES FINALES
+        // Se reduce el margen límite (210) para garantizar que los totales y las firmas no se dividan
+        if (y > 205) { doc.addPage(); y = 20; }
+        y += 2;
+
+        doc.setFillColor(27, 54, 93);
+        doc.rect(95, y, 106, 26, "F");
+
+        doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(230);
+        doc.text(`TOTAL KILOS ACUMULADOS:`, 99, y + 6);
+        doc.setFont("helvetica", "bold"); doc.text(`${granSumaKg.toFixed(2)} KG`, 168, y + 6);
+        
+        doc.setFont("helvetica", "normal"); doc.text(`TOTAL METROS ACUMULADOS:`, 99, y + 12);
+        doc.setFont("helvetica", "bold"); doc.text(`${granSumaMts.toFixed(2)} MTS`, 168, y + 12);
+        
+        doc.setDrawColor(255); doc.line(99, y + 15, 196, y + 15);
+
+        doc.setFont("helvetica", "bold"); doc.setFontSize(11.5); doc.setTextColor(255);
+        doc.text("TOTAL GENERAL NETO:", 99, y + 21.5);
+        doc.text(`$ ${granSumaDinero.toFixed(2)}`, 164, y + 21.5);
+
+        y += 26; // Desplazamiento hacia abajo para iniciar la sección de firmas
+
+        // --- NUEVA MEJORA: SECCIÓN EXCLUSIVA DE FIRMAS ---
+        // Líneas horizontales de firma
+        doc.setDrawColor(100); doc.setLineWidth(0.3);
+        doc.line(20, y + 12, 85, y + 12);  // Línea izquierda (Entrega)
+        doc.line(130, y + 12, 195, y + 12); // Línea derecha (Recibe)
+
+        // Etiquetas institucionales debajo de las líneas
+        doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(50);
+        doc.text("FIRMA DE ENTREGA", 32, y + 17);
+        doc.text("FIRMA DE RECIBIDO", 143, y + 17);
+
+        doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(120);
+        doc.text("Despacho Almacén RICHATEX", 27, y + 21);
+        doc.text("Cliente / Transportista", 144, y + 21);
+
+        // Pie corporativo fijo
+        doc.setFont("helvetica", "italic"); doc.setFontSize(8); doc.setTextColor(150);
+        doc.text("RICHATEX ARGENTINA S.R.L. - Liquidación de despacho discriminada por unidad métrica y de peso.", marginX, 272);
+
+        doc.save(`Parking_List_RICHATEX_${inputCliente.value.replace(/\s+/g, '_')}.pdf`);
+        
+        // Limpieza y reinicio
+        lotesConsolidados = [];
+        inputCliente.disabled = false;
+        inputCliente.value = '';
+        renderDashboard();
+        alert("Reporte PDF generado exitosamente con sección de firmas.");
+    }
+</script>
+
+</body>
+</html>
